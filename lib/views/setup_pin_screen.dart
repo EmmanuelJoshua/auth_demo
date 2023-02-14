@@ -3,17 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/providers/app_provider.dart';
+import '../core/providers/set_pin_vm.dart';
 
-class SetupPinScreen extends ConsumerWidget {
+class SetupPinScreen extends ConsumerStatefulWidget {
   const SetupPinScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // defaults to false -- pin is 4 digits
-    final isPin6 = ref.watch(pinProvider);
+  ConsumerState<SetupPinScreen> createState() => _SetupPinScreenState();
+}
 
-    int pinLength = isPin6 ? 6 : 4;
+class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
+  late int pinLength;
+
+  @override
+  Widget build(BuildContext context) {
+    final setPinVm = ref.watch(setPinViewModel);
+
+    bool isPin6 = setPinVm.isPin6;
+
+    bool hasEnteredPin = setPinVm.hasEnteredPin;
+
+    // set context for alert dialog
+    setPinVm.context = context;
+
+    pinLength = isPin6 ? 6 : 4;
 
     return Scaffold(
       appBar: AppBar(
@@ -32,8 +45,11 @@ class SetupPinScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () {
-              // inverse values
-              ref.read(pinProvider.notifier).state = !isPin6;
+              // inverse values -- toggle if pin is 6
+              ref.read(setPinViewModel).toggleIsPin6();
+
+              // clear input array
+              ref.read(setPinViewModel).clear();
             },
             child: Text(
               isPin6 ? 'Use 4-digits PIN' : 'Use 6-digits PIN',
@@ -52,10 +68,10 @@ class SetupPinScreen extends ConsumerWidget {
           const SizedBox(
             height: 70,
           ),
-          const Center(
+          Center(
             child: Text(
-              'Create PIN',
-              style: TextStyle(
+              hasEnteredPin ? 'Re-enter your PIN' : 'Create PIN',
+              style: const TextStyle(
                 fontSize: 27,
                 color: Color(0xff9AA8C1),
               ),
@@ -74,13 +90,22 @@ class SetupPinScreen extends ConsumerWidget {
                 width: 30,
               ),
               itemBuilder: (context, index) {
+                // check if input is filled
+                bool hasInput = setPinVm.hasInput(index);
+
                 return AnimatedContainer(
                   height: 17,
                   width: 17,
-                  duration: const Duration(milliseconds: 400),
+                  duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
-                    border:
-                        Border.all(color: const Color(0xff9AA8C1), width: 1.6),
+                    color:
+                        hasInput ? const Color(0xff735AE8) : Colors.transparent,
+                    border: Border.all(
+                      color: hasInput
+                          ? const Color(0xff735AE8)
+                          : const Color(0xff9AA8C1),
+                      width: 1.6,
+                    ),
                     shape: BoxShape.circle,
                   ),
                 );
@@ -101,7 +126,14 @@ class SetupPinScreen extends ConsumerWidget {
   void _onPressed({
     required String buttonText,
   }) {
+    final setPinVm = ref.read(setPinViewModel);
+
     if (buttonText == 'delete') {
-    } else {}
+      setPinVm.deleteValue();
+    } else {
+      setPinVm.addValue(pinLength, buttonText);
+    }
+
+    setPinVm.handlePinInput(pinLength);
   }
 }

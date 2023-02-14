@@ -1,14 +1,33 @@
+import 'package:cakewallet_task/core/providers/auth_vm.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../widgets/button_grid.dart';
 
-class PinAuthScreen extends ConsumerWidget {
+class PinAuthScreen extends ConsumerStatefulWidget {
   const PinAuthScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConsumerStatefulWidget> createState() => _PinAuthScreenState();
+}
+
+class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
+  late int pinLength;
+  @override
+  void initState() {
+    super.initState();
+    ref.read(authViewModel).getPin();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authVm = ref.watch(authViewModel);
+
+    // set context for alert dialog
+    authVm.context = context;
+
+    pinLength = authVm.isPin6 ? 6 : 4;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -40,20 +59,28 @@ class PinAuthScreen extends ConsumerWidget {
           SizedBox(
             height: 35,
             child: ListView.separated(
-              itemCount: 4,
+              itemCount: pinLength,
               shrinkWrap: true,
               scrollDirection: Axis.horizontal,
               separatorBuilder: (context, index) => const SizedBox(
                 width: 30,
               ),
               itemBuilder: (context, index) {
+                // check if input is filled
+                bool hasInput = authVm.hasInput(index);
                 return AnimatedContainer(
                   height: 17,
                   width: 17,
                   duration: const Duration(milliseconds: 400),
                   decoration: BoxDecoration(
-                    border:
-                        Border.all(color: const Color(0xff9AA8C1), width: 1.6),
+                    color:
+                        hasInput ? const Color(0xff735AE8) : Colors.transparent,
+                    border: Border.all(
+                      color: hasInput
+                          ? const Color(0xff735AE8)
+                          : const Color(0xff9AA8C1),
+                      width: 1.6,
+                    ),
                     shape: BoxShape.circle,
                   ),
                 );
@@ -74,7 +101,14 @@ class PinAuthScreen extends ConsumerWidget {
   void _onPressed({
     required String buttonText,
   }) {
+    final authVm = ref.read(authViewModel);
+
     if (buttonText == 'delete') {
-    } else {}
+      authVm.deleteValue();
+    } else {
+      authVm.addValue(pinLength, buttonText);
+    }
+
+    authVm.handlePinInput(pinLength);
   }
 }
